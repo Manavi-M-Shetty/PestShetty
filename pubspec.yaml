@@ -12,6 +12,10 @@ dependencies:
   cupertino_icons: ^1.0.5
   image_picker: ^0.8.7+6
   intl: ^0.18.0
+  camera: ^0.11.2
+  image: ^4.0.17
+  tflite_flutter: ^0.10.0
+ 
 
 
 dev_dependencies:
@@ -24,4 +28,5 @@ flutter:
   assets:
     - assets/images/icon_leaf.png
     - assets/images/sample_leaf.jpg
+    - assets/models/model_quant.tflite
 

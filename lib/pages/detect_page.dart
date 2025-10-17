@@ -1,8 +1,67 @@
+// lib/pages/detect_page_with_tflite.dart
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
+// Simple local stub of TFLiteService to avoid missing-package compile error.
+// In your production app replace this with the real implementation that
+// loads and runs your TensorFlow Lite model (for example using tflite_flutter
+// or tflite plugin).
+//
+// The stub provides:
+// - loadModel({modelPath, labelsPath})
+// - Future<Prediction?> predict(File image)
+// - void close()
+//
+// Prediction contains label and confidence.
+class Prediction {
+  final String label;
+  final double confidence;
 
+  Prediction({required this.label, required this.confidence});
+}
+
+class TFLiteService {
+  List<String> _labels = [];
+
+  Future<void> loadModel({required String modelPath, String? labelsPath}) async {
+    // No-op stub: in a real implementation load the TFLite model and labels here.
+    // If a labelsPath is provided you may load them from assets.
+    try {
+      if (labelsPath != null) {
+        // attempt to read labels from asset bundle if available
+        final raw = await rootBundle.loadString(labelsPath);
+        _labels = raw.split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      }
+    } catch (_) {
+      // ignore: keep stub resilient
+      _labels = [];
+    }
+  }
+
+  Future<Prediction?> predict(File image) async {
+    // Very small heuristic stub: return a fake prediction based on image bytes.
+    try {
+      final bytes = await image.readAsBytes();
+      if (bytes.isEmpty) return null;
+      // Simple pseudo-confidence from byte sum
+      final sum = bytes.fold<int>(0, (p, e) => p + e);
+      final confidence = ((sum % 100) / 100.0).clamp(0.0, 1.0);
+      final label = _labels.isNotEmpty ? _labels[sum % _labels.length] : 'unknown';
+      return Prediction(label: label, confidence: confidence);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void close() {
+    // no resources in stub
+  }
+}
+
+/// DetectPage with TFLite integration
 class DetectPage extends StatefulWidget {
   const DetectPage({super.key});
 
@@ -18,7 +77,10 @@ class _DetectPageState extends State<DetectPage> with SingleTickerProviderStateM
   bool _isDetecting = false;
 
   // Animation controller for glowing detect button
-  late AnimationController _pulseController;
+  late final AnimationController _pulseController;
+
+  // TFLite service instance
+  final _tfliteService = TFLiteService();
 
   @override
   void initState() {
@@ -29,11 +91,36 @@ class _DetectPageState extends State<DetectPage> with SingleTickerProviderStateM
       lowerBound: 0.95,
       upperBound: 1.05,
     )..repeat(reverse: true);
+
+    // Load the model (fire-and-forget). Errors will be logged and shown if mounted.
+    _loadModel();
+  }
+
+  Future<void> _loadModel() async {
+    try {
+      await _tfliteService.loadModel(
+        modelPath: 'assets/models/model_quant.tflite',
+        labelsPath: 'assets/models/labels.txt', // optional
+      );
+      if (mounted) {
+        // optional debug:
+        // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Model loaded')));
+      }
+    } catch (e) {
+      // Log error and show SnackBar only if still mounted
+      debugPrint('Failed to load model: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Model load failed: $e')),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _tfliteService.close();
     super.dispose();
   }
 
@@ -45,34 +132,60 @@ class _DetectPageState extends State<DetectPage> with SingleTickerProviderStateM
         maxWidth: 1200,
       );
       if (file == null) return;
+      if (!mounted) return;
       setState(() {
         _image = File(file.path);
         _label = '';
         _confidence = 0.0;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick image: $e')),
-      );
+      debugPrint('Failed to pick image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
     }
   }
 
-  void _runDetection() async {
+  Future<void> _runDetection() async {
     if (_image == null) return;
+
+    // disable button
+    if (!mounted) return;
     setState(() => _isDetecting = true);
 
-    await Future.delayed(const Duration(seconds: 2)); // Mock delay
+    try {
+      final pred = await _tfliteService.predict(_image!);
+      if (!mounted) return;
 
-    setState(() {
-      _label = 'Strawberry Leaf Scorch';
-      _confidence = 0.829;
-      _isDetecting = false;
-    });
+      if (pred != null) {
+        setState(() {
+          _label = pred.label;
+          _confidence = pred.confidence;
+          _isDetecting = false;
+        });
 
-    _showResultsSheet();
+        _showResultsSheet();
+      } else {
+        setState(() => _isDetecting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No prediction returned')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Inference failed: $e');
+      if (mounted) {
+        setState(() => _isDetecting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Inference failed: $e')),
+        );
+      }
+    }
   }
 
   void _showResultsSheet() {
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -244,7 +357,7 @@ class _DetectPageState extends State<DetectPage> with SingleTickerProviderStateM
                   ScaleTransition(
                     scale: _pulseController,
                     child: GestureDetector(
-                      onTap: _image == null || _isDetecting ? null : _runDetection,
+                      onTap: (_image == null || _isDetecting) ? null : _runDetection,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         padding: const EdgeInsets.symmetric(vertical: 18),
