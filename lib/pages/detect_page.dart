@@ -44,6 +44,9 @@ class _DetectPageState extends State<DetectPage>
   };
   final translator = GoogleTranslator();
   final FlutterTts _flutterTts = FlutterTts();
+  bool _isTtsPlaying = false;
+  bool _isTtsPaused = false;
+  String? _lastSpokenMessage;
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -67,12 +70,47 @@ class _DetectPageState extends State<DetectPage>
     _flutterTts.setSpeechRate(0.5);
     _flutterTts.setPitch(1.0);
     _flutterTts.setVolume(1.0);
+    // TTS lifecycle handlers to update UI state
+    _flutterTts.setStartHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _isTtsPlaying = true;
+        _isTtsPaused = false;
+      });
+    });
+
+    _flutterTts.setCompletionHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _isTtsPlaying = false;
+        _isTtsPaused = false;
+      });
+    });
+
+    _flutterTts.setPauseHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _isTtsPaused = true;
+        _isTtsPlaying = false;
+      });
+    });
+
+    _flutterTts.setContinueHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _isTtsPaused = false;
+        _isTtsPlaying = true;
+      });
+    });
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     _cropController.dispose();
+    try {
+      _flutterTts.stop();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -90,13 +128,43 @@ class _DetectPageState extends State<DetectPage>
   // 🎧 Speak out pest detection result
   Future<void> _speakDetectionResult() async {
     if (_label.isEmpty || _solution.isEmpty) return;
+    // compose and store the message so pause/stop can reference it
+    _lastSpokenMessage = _composeTtsMessage();
+    await _startTts(_lastSpokenMessage);
+  }
 
-    String message = _languageProvider.isKannada
+  String _composeTtsMessage() {
+    return _languageProvider.isKannada
         ? "ಕೀಟ: $_label. ವಿಶ್ವಾಸದ ಮಟ್ಟ ${_confidence.toStringAsFixed(1)} ಶೇಕಡಾ. ಪರಿಹಾರ: $_solution"
         : "Detected pest: $_label. Confidence level: ${_confidence.toStringAsFixed(1)} percent. Solution: $_solution";
+  }
 
-  await _flutterTts.setLanguage(_languageProvider.isKannada ? "kn-IN" : "en-IN");
-    await _flutterTts.speak(message);
+  Future<void> _startTts([String? message]) async {
+    final msg = message ?? _lastSpokenMessage ?? _composeTtsMessage();
+    try {
+      await _flutterTts.setLanguage(_languageProvider.isKannada ? "kn-IN" : "en-IN");
+      await _flutterTts.speak(msg);
+      _lastSpokenMessage = msg;
+    } catch (e) {
+      debugPrint('TTS start failed: $e');
+    }
+  }
+
+  Future<void> _pauseTts() async {
+    try {
+      await _flutterTts.pause();
+    } catch (e) {
+      // Some platforms may not support pause; fall back to stop
+      await _flutterTts.stop();
+    }
+  }
+
+  Future<void> _stopTts() async {
+    try {
+      await _flutterTts.stop();
+    } catch (e) {
+      debugPrint('TTS stop failed: $e');
+    }
   }
 
   void _onTabTapped(int index) {
@@ -374,27 +442,67 @@ class _DetectPageState extends State<DetectPage>
                   ),
                   const SizedBox(height: 18),
 
-                  // 🔊 Speak Result Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _speakDetectionResult,
-                      icon: const Icon(Icons.volume_up, color: Colors.white),
-                      label: Text(
-                        _languageProvider.isKannada ? "ಫಲಿತಾಂಶವನ್ನು ಕೇಳಿ" : "Hear Result",
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orangeAccent,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  // 🔊 TTS Controls: Play/Pause toggle + Stop
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: (_label.isEmpty || _solution.isEmpty)
+                              ? null
+                              : () {
+                                  if (!_isTtsPlaying) {
+                                    // start or resume speaking
+                                    _startTts(_lastSpokenMessage ?? _composeTtsMessage());
+                                  } else {
+                                    // pause
+                                    _pauseTts();
+                                  }
+                                },
+                          icon: Icon(
+                              _isTtsPlaying ? Icons.pause : Icons.volume_up,
+                              color: Colors.white),
+                          label: Text(
+                            _isTtsPlaying
+                                ? (_languageProvider.isKannada ? "ನಿಲ್ಲಿಸು" : "Pause")
+                                : (_languageProvider.isKannada ? "ಫಲಿತಾಂಶವನ್ನು ಕೇಳಿ" : "Hear Result"),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orangeAccent,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 56,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: (_isTtsPlaying || _isTtsPaused)
+                              ? () {
+                                  _stopTts();
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                (_isTtsPlaying || _isTtsPaused)
+                                    ? Colors.redAccent
+                                    : Colors.red.shade200,
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Icon(Icons.stop, color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
 
