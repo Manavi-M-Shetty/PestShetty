@@ -9,13 +9,21 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  geolocator: ^14.0.2
+  geocoding: ^2.1.5
   cupertino_icons: ^1.0.5
   image_picker: ^0.8.7+6
   intl: ^0.18.0
   camera: ^0.11.2
   image: ^4.0.17
   tflite_flutter: ^0.10.0
- 
+  http: ^1.2.1
+  translator: ^1.0.0
+  flutter_tts: ^3.8.3
+  provider: ^6.1.2
+
+
+
 
 
 dev_dependencies:
@@ -29,4 +37,19 @@ flutter:
     - assets/images/icon_leaf.png
     - assets/images/sample_leaf.jpg
     - assets/models/model_quant.tflite
+    - assets/images/aphid.jpg
+    - assets/images/thrips.jpg
+    - assets/images/whitefly.jpg
+    - assets/images/logo.jpg
+    - assets/images/caterpillar.jpg
+    - assets/images/mealybug.jpg  
+    - assets/images/spidermite.jpg
+    - assets/images/grasshopper.jpg 
+    - assets/images/leafminer.jpg
+    - assets/images/fruitfly.jpg
+    - assets/images/scale.jpg
+    - assets/images/armyworm.jpg
+    - assets/images/beetle.jpg
+    - assets/images/stemborer.jpg
+    - assets/images/cutworm.jpg
 
