@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:translator/translator.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 class DetectPage extends StatefulWidget {
   const DetectPage({super.key});
@@ -20,11 +22,26 @@ class _DetectPageState extends State<DetectPage>
   double _confidence = 0.0;
   String _solution = '';
   bool _isDetecting = false;
-  bool _isKannada = false;
   int _selectedIndex = 1;
+  late LanguageProvider _languageProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _languageProvider = Provider.of<LanguageProvider>(context);
+  }
 
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _cropController = TextEditingController();
+  final List<String> _cropOptions = ['Jute', 'Paddy', 'Cotton', 'Tomato', 'Cashew'];
+  // Kannada display labels for the dropdown (internal values remain English for API)
+  final Map<String, String> _cropLabelsKannada = {
+    'Jute': 'ಜ್ಯೂಟ್',
+    'Paddy': 'ಭತ್ತ',
+    'Cotton': 'ಹತ್ತಿ',
+    'Tomato': 'ಟೊಮೆಟೊ',
+    'Cashew': 'ಕಾಜು',
+  };
   final translator = GoogleTranslator();
   final FlutterTts _flutterTts = FlutterTts();
 
@@ -74,21 +91,23 @@ class _DetectPageState extends State<DetectPage>
   Future<void> _speakDetectionResult() async {
     if (_label.isEmpty || _solution.isEmpty) return;
 
-    String message = _isKannada
+    String message = _languageProvider.isKannada
         ? "ಕೀಟ: $_label. ವಿಶ್ವಾಸದ ಮಟ್ಟ ${_confidence.toStringAsFixed(1)} ಶೇಕಡಾ. ಪರಿಹಾರ: $_solution"
         : "Detected pest: $_label. Confidence level: ${_confidence.toStringAsFixed(1)} percent. Solution: $_solution";
 
-    await _flutterTts.setLanguage(_isKannada ? "kn-IN" : "en-IN");
+  await _flutterTts.setLanguage(_languageProvider.isKannada ? "kn-IN" : "en-IN");
     await _flutterTts.speak(message);
   }
 
   void _onTabTapped(int index) {
+    if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
-    if (index == 0) {
-      Navigator.pop(context);
-    } else if (index == 2) {
-      Navigator.pushNamed(context, '/settings');
-    }
+
+    final route = index == 0 ? '/' : (index == 1 ? '/detect' : '/settings');
+    final current = ModalRoute.of(context)?.settings.name;
+    if (current == route) return;
+
+    Navigator.pushReplacementNamed(context, route);
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -142,15 +161,15 @@ class _DetectPageState extends State<DetectPage>
         if (data['predicted_pest'] == null || confidence < 70) {
           setState(() => _isDetecting = false);
           _showInvalidResultDialog(
-            _isKannada
-                ? "ಚಿತ್ರವು ಯಾವುದೇ ತಿಳಿದಿರುವ ಕೀಟಕ್ಕೆ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ."
-                : "The image does not clearly match any known pest.",
+        _languageProvider.isKannada
+          ? "ಚಿತ್ರವು ಯಾವುದೇ ತಿಳಿದಿರುವ ಕೀಟಕ್ಕೆ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ."
+          : "The image does not clearly match any known pest.",
           );
           return;
         }
 
         // 🌐 Translate if Kannada mode
-        if (_isKannada) {
+        if (_languageProvider.isKannada) {
           pest = await _translateToKannada(pest);
           solution = await _translateToKannada(solution);
         }
@@ -181,12 +200,12 @@ class _DetectPageState extends State<DetectPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(_isKannada ? "ಪತ್ತೆ ವಿಫಲವಾಗಿದೆ" : "Detection Failed"),
+        title: Text(_languageProvider.isKannada ? "ಪತ್ತೆ ವಿಫಲವಾಗಿದೆ" : "Detection Failed"),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(_isKannada ? "ಸರಿ" : "OK"),
+            child: Text(_languageProvider.isKannada ? "ಸರಿ" : "OK"),
           ),
         ],
       ),
@@ -233,7 +252,7 @@ class _DetectPageState extends State<DetectPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _isKannada ? "ಪತ್ತೆ ಪೂರ್ಣವಾಗಿದೆ" : "Detection Complete",
+                          _languageProvider.isKannada ? "ಪತ್ತೆ ಪೂರ್ಣವಾಗಿದೆ" : "Detection Complete",
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -270,7 +289,7 @@ class _DetectPageState extends State<DetectPage>
                       Icon(Icons.bar_chart, color: Colors.green[700], size: 20),
                       const SizedBox(width: 6),
                       Text(
-                        _isKannada ? "ವಿಶ್ವಾಸದ ಮಟ್ಟ" : "Confidence Level",
+                        _languageProvider.isKannada ? "ವಿಶ್ವಾಸದ ಮಟ್ಟ" : "Confidence Level",
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -307,7 +326,7 @@ class _DetectPageState extends State<DetectPage>
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            _isKannada ? "ಹೆಚ್ಚು" : "High",
+                            _languageProvider.isKannada ? "ಹೆಚ್ಚು" : "High",
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -326,7 +345,7 @@ class _DetectPageState extends State<DetectPage>
                           color: Colors.blue[700], size: 20),
                       const SizedBox(width: 6),
                       Text(
-                        _isKannada
+                        _languageProvider.isKannada
                             ? "ಶಿಫಾರಸು ಮಾಡಿದ ಚಿಕಿತ್ಸೆ"
                             : "Recommended Treatment",
                         style: const TextStyle(
@@ -362,7 +381,7 @@ class _DetectPageState extends State<DetectPage>
                       onPressed: _speakDetectionResult,
                       icon: const Icon(Icons.volume_up, color: Colors.white),
                       label: Text(
-                        _isKannada ? "ಫಲಿತಾಂಶವನ್ನು ಕೇಳಿ" : "Hear Result",
+                        _languageProvider.isKannada ? "ಫಲಿತಾಂಶವನ್ನು ಕೇಳಿ" : "Hear Result",
                         style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -392,7 +411,7 @@ class _DetectPageState extends State<DetectPage>
                         ),
                       ),
                       child: Text(
-                        _isKannada ? "ಅರ್ಥವಾಯಿತು!" : "GOT IT!",
+                        _languageProvider.isKannada ? "ಅರ್ಥವಾಯಿತು!" : "GOT IT!",
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,
@@ -414,6 +433,7 @@ class _DetectPageState extends State<DetectPage>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0A0E0A) : const Color(0xFFF8FBF8);
+
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -462,7 +482,7 @@ class _DetectPageState extends State<DetectPage>
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              _isKannada ? "ಹುಳು ಪತ್ತೆ" : "Pest Detection",
+              _languageProvider.isKannada ? "ಹುಳು ಪತ್ತೆ" : "Pest Detection",
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 26,
@@ -472,8 +492,12 @@ class _DetectPageState extends State<DetectPage>
           ),
           IconButton(
             icon: const Icon(Icons.language, color: Colors.white),
-            tooltip: _isKannada ? "Switch to English" : "ಕನ್ನಡಕ್ಕೆ ಬದಲಿಸಿ",
-            onPressed: () => setState(() => _isKannada = !_isKannada),
+            tooltip: _languageProvider.isKannada ? "Switch to English" : "ಕನ್ನಡಕ್ಕೆ ಬದಲಿಸಿ",
+            onPressed: () {
+              setState(() {
+                _languageProvider.toggleLanguage();
+              });
+            },
           ),
         ],
       ),
@@ -481,19 +505,36 @@ class _DetectPageState extends State<DetectPage>
   }
 
   Widget _buildCropInput(bool isDark) {
-    return TextField(
-      controller: _cropController,
+    return DropdownButtonFormField<String>(
+      value: _cropController.text.isEmpty ? null : _cropController.text,
+      items: _cropOptions.map((crop) {
+        final display = _languageProvider.isKannada
+            ? (_cropLabelsKannada[crop] ?? crop)
+            : crop;
+        return DropdownMenuItem(
+          value: crop,
+          child: Text(display),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          _cropController.text = value ?? '';
+        });
+      },
       decoration: InputDecoration(
-        hintText: _isKannada
-            ? "ಬೆಳೆ ಹೆಸರು (ಉದಾ: ಟೊಮೆಟೊ, ಹತ್ತಿ)"
-            : "Enter crop name (e.g., tomato, cotton)",
+        hintText: _languageProvider.isKannada
+            ? "ಬೆಳೆ ಆಯ್ಕೆ ಮಾಡಿ (ಉದಾ: ಟೊಮೆಟೊ, ಹತ್ತಿ)"
+            : "Select crop (e.g., Tomato, Cotton)",
         filled: true,
         fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
+      dropdownColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
     );
   }
 
@@ -533,7 +574,7 @@ class _DetectPageState extends State<DetectPage>
           child: _isDetecting
               ? const CircularProgressIndicator(color: Colors.white)
               : Text(
-                  _isKannada ? "ಹುಳು ಪತ್ತೆ" : "Detect Pest",
+                  _languageProvider.isKannada ? "ಹುಳು ಪತ್ತೆ" : "Detect Pest",
                   style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -551,7 +592,7 @@ class _DetectPageState extends State<DetectPage>
           child: ElevatedButton.icon(
             onPressed: () => _pickImage(ImageSource.gallery),
             icon: const Icon(Icons.photo_library_outlined),
-            label: Text(_isKannada ? "ಗ್ಯಾಲರಿ" : "Gallery"),
+            label: Text(_languageProvider.isKannada ? "ಗ್ಯಾಲರಿ" : "Gallery"),
             style:
                 ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade600),
           ),
@@ -561,7 +602,7 @@ class _DetectPageState extends State<DetectPage>
           child: ElevatedButton.icon(
             onPressed: () => _pickImage(ImageSource.camera),
             icon: const Icon(Icons.camera_alt_outlined),
-            label: Text(_isKannada ? "ಕ್ಯಾಮೆರಾ" : "Camera"),
+            label: Text(_languageProvider.isKannada ? "ಕ್ಯಾಮೆರಾ" : "Camera"),
             style:
                 ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600),
           ),
@@ -576,21 +617,21 @@ class _DetectPageState extends State<DetectPage>
       onDestinationSelected: _onTabTapped,
       backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
       indicatorColor: Colors.green.shade100,
-      destinations: const [
+      destinations: [
         NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home, color: Colors.green),
-          label: "Home",
+          icon: const Icon(Icons.home_outlined),
+          selectedIcon: const Icon(Icons.home, color: Colors.green),
+          label: _languageProvider.isKannada ? 'ಮುಖಪುಟ' : 'Home',
         ),
         NavigationDestination(
-          icon: Icon(Icons.camera_alt_outlined),
-          selectedIcon: Icon(Icons.camera_alt, color: Colors.green),
-          label: "Detect",
+          icon: const Icon(Icons.camera_alt_outlined),
+          selectedIcon: const Icon(Icons.camera_alt, color: Colors.green),
+          label: _languageProvider.isKannada ? 'ಪತ್ತೆ ಮಾಡಿ' : 'Detect',
         ),
         NavigationDestination(
-          icon: Icon(Icons.settings_outlined),
-          selectedIcon: Icon(Icons.settings, color: Colors.green),
-          label: "Settings",
+          icon: const Icon(Icons.settings_outlined),
+          selectedIcon: const Icon(Icons.settings, color: Colors.green),
+          label: _languageProvider.isKannada ? 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು' : 'Settings',
         ),
       ],
     );

@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,7 +17,14 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   File? _selectedImage;
   String _searchQuery = '';
-  bool _isKannada = false; // Language toggle
+  late LanguageProvider _languageProvider;
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _languageProvider = Provider.of<LanguageProvider>(context);
+  }
+  
   
   // Weather data
   Map<String, dynamic>? _weatherData;
@@ -31,25 +40,25 @@ class _HomePageState extends State<HomePage> {
   // ---------- Translation Map ----------
   Map<String, String> _translate(String key) {
     final translations = {
-      'appTitle': _isKannada ? 'ಪೆಸ್ಟ್‌ವಿಷನ್' : 'PestVision',
-      'tagline': _isKannada ? 'ನಿಮ್ಮ ಸ್ಮಾರ್ಟ್ ಕೃಷಿ ಸಹಾಯಕ' : 'Your smart farming companion',
-      'tipText': _isKannada ? 'ಕೀಟಗಳನ್ನು ಪತ್ತೆ ಮಾಡಿ, ಗುರುತಿಸಿ ಮತ್ತು ನಿರ್ವಹಿಸಿ' : 'Detect, identify, and manage pests',
-      'searchHint': _isKannada ? 'ಕೀಟಗಳನ್ನು ಹುಡುಕಿ...' : 'Search pests...',
-      'crops': _isKannada ? 'ಬೆಳೆಗಳು' : 'Crops',
-      'tapForInfo': _isKannada ? 'ಮಾಹಿತಿಗಾಗಿ ಟ್ಯಾಪ್ ಮಾಡಿ' : 'Tap for info',
-      'commonPests': _isKannada ? 'ಸಾಮಾನ್ಯ ಕೀಟಗಳು' : 'Common Pests',
-      'tapForDetails': _isKannada ? 'ವಿವರಗಳಿಗಾಗಿ ಟ್ಯಾಪ್ ಮಾಡಿ' : 'Tap for details',
-      'home': _isKannada ? 'ಮುಖಪುಟ' : 'Home',
-      'detect': _isKannada ? 'ಪತ್ತೆ ಮಾಡಿ' : 'Detect',
-      'settings': _isKannada ? 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು' : 'Settings',
-      'about': _isKannada ? 'ಬಗ್ಗೆ' : 'About',
-      'treatment': _isKannada ? 'ಚಿಕಿತ್ಸೆ' : 'Treatment',
-      'detailedInfo': _isKannada ? 'ವಿವರವಾದ ಮಾಹಿತಿ' : 'Detailed Information',
-      'commonPestsTitle': _isKannada ? 'ಸಾಮಾನ್ಯ ಕೀಟಗಳು' : 'Common Pests',
-      'humidity': _isKannada ? 'ತೇವಾಂಶ' : 'Humidity',
-      'wind': _isKannada ? 'ಗಾಳಿ' : 'Wind',
-      'feelsLike': _isKannada ? 'ಅನುಭವವಾಗುತ್ತಿದೆ' : 'Feels like',
-      'retry': _isKannada ? 'ಮರುಪ್ರಯತ್ನಿಸಿ' : 'Retry',
+      'appTitle': _languageProvider.isKannada ? 'ಪೆಸ್ಟ್‌ವಿಷನ್' : 'PestVision',
+      'tagline': _languageProvider.isKannada ? 'ನಿಮ್ಮ ಸ್ಮಾರ್ಟ್ ಕೃಷಿ ಸಹಾಯಕ' : 'Your smart farming companion',
+      'tipText': _languageProvider.isKannada ? 'ಕೀಟಗಳನ್ನು ಪತ್ತೆ ಮಾಡಿ, ಗುರುತಿಸಿ ಮತ್ತು ನಿರ್ವಹಿಸಿ' : 'Detect, identify, and manage pests',
+      'searchHint': _languageProvider.isKannada ? 'ಕೀಟಗಳನ್ನು ಹುಡುಕಿ...' : 'Search pests...',
+      'crops': _languageProvider.isKannada ? 'ಬೆಳೆಗಳು' : 'Crops',
+      'tapForInfo': _languageProvider.isKannada ? 'ಮಾಹಿತಿಗಾಗಿ ಟ್ಯಾಪ್ ಮಾಡಿ' : 'Tap for info',
+      'commonPests': _languageProvider.isKannada ? 'ಸಾಮಾನ್ಯ ಕೀಟಗಳು' : 'Common Pests',
+      'tapForDetails': _languageProvider.isKannada ? 'ವಿವರಗಳಿಗಾಗಿ ಟ್ಯಾಪ್ ಮಾಡಿ' : 'Tap for details',
+      'home': _languageProvider.isKannada ? 'ಮುಖಪುಟ' : 'Home',
+      'detect': _languageProvider.isKannada ? 'ಪತ್ತೆ ಮಾಡಿ' : 'Detect',
+      'settings': _languageProvider.isKannada ? 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು' : 'Settings',
+      'about': _languageProvider.isKannada ? 'ಬಗ್ಗೆ' : 'About',
+      'treatment': _languageProvider.isKannada ? 'ಚಿಕಿತ್ಸೆ' : 'Treatment',
+      'detailedInfo': _languageProvider.isKannada ? 'ವಿವರವಾದ ಮಾಹಿತಿ' : 'Detailed Information',
+      'commonPestsTitle': _languageProvider.isKannada ? 'ಸಾಮಾನ್ಯ ಕೀಟಗಳು' : 'Common Pests',
+      'humidity': _languageProvider.isKannada ? 'ತೇವಾಂಶ' : 'Humidity',
+      'wind': _languageProvider.isKannada ? 'ಗಾಳಿ' : 'Wind',
+      'feelsLike': _languageProvider.isKannada ? 'ಅನುಭವವಾಗುತ್ತಿದೆ' : 'Feels like',
+      'retry': _languageProvider.isKannada ? 'ಮರುಪ್ರಯತ್ನಿಸಿ' : 'Retry',
     };
     return translations;
   }
@@ -67,7 +76,7 @@ class _HomePageState extends State<HomePage> {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           setState(() {
-            _weatherError = _isKannada ? 'ಸ್ಥಳ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ' : 'Location permission denied';
+            _weatherError = _languageProvider.isKannada ? 'ಸ್ಥಳ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ' : 'Location permission denied';
             _isLoadingWeather = false;
           });
           return;
@@ -92,7 +101,7 @@ class _HomePageState extends State<HomePage> {
         );
         
         final geoResponse = await http.get(geoUrl);
-        String locationName = _isKannada ? 'ಪ್ರಸ್ತುತ ಸ್ಥಳ' : 'Current Location';
+        String locationName = _languageProvider.isKannada ? 'ಪ್ರಸ್ತುತ ಸ್ಥಳ' : 'Current Location';
         
         if (geoResponse.statusCode == 200) {
           final geoData = json.decode(geoResponse.body);
@@ -112,20 +121,20 @@ class _HomePageState extends State<HomePage> {
         });
       } else {
         setState(() {
-          _weatherError = _isKannada ? 'ಹವಾಮಾನ ಡೇಟಾ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ' : 'Failed to load weather data';
+          _weatherError = _languageProvider.isKannada ? 'ಹವಾಮಾನ ಡೇಟಾ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ' : 'Failed to load weather data';
           _isLoadingWeather = false;
         });
       }
     } catch (e) {
       setState(() {
-        _weatherError = _isKannada ? 'ದೋಷ: ${e.toString()}' : 'Error: ${e.toString()}';
+        _weatherError = _languageProvider.isKannada ? 'ದೋಷ: ${e.toString()}' : 'Error: ${e.toString()}';
         _isLoadingWeather = false;
       });
     }
   }
 
   String _getWeatherDescription(int code) {
-    if (!_isKannada) {
+    if (!_languageProvider.isKannada) {
       if (code == 0) return 'Clear sky';
       if (code <= 3) return 'Partly cloudy';
       if (code <= 48) return 'Foggy';
@@ -266,11 +275,11 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, String>> get _pests {
     return _pestsData.map((pest) {
       return {
-        "name": pest["name"][_isKannada ? "kn" : "en"] as String,
-        "desc": pest["desc"][_isKannada ? "kn" : "en"] as String,
+        "name": pest["name"][_languageProvider.isKannada ? "kn" : "en"] as String,
+        "desc": pest["desc"][_languageProvider.isKannada ? "kn" : "en"] as String,
         "img": pest["img"] as String,
-        "details": pest["details"][_isKannada ? "kn" : "en"] as String,
-        "treatment": pest["treatment"][_isKannada ? "kn" : "en"] as String,
+        "details": pest["details"][_languageProvider.isKannada ? "kn" : "en"] as String,
+        "treatment": pest["treatment"][_languageProvider.isKannada ? "kn" : "en"] as String,
       };
     }).toList();
   }
@@ -319,26 +328,24 @@ class _HomePageState extends State<HomePage> {
     return _cropsData.map((crop) {
       return {
         'icon': crop['icon'],
-        'name': crop['name'][_isKannada ? 'kn' : 'en'],
+        'name': crop['name'][_languageProvider.isKannada ? 'kn' : 'en'],
         'color': crop['color'],
-        'info': crop['info'][_isKannada ? 'kn' : 'en'],
-        'pests': crop['pests'][_isKannada ? 'kn' : 'en'],
+        'info': crop['info'][_languageProvider.isKannada ? 'kn' : 'en'],
+        'pests': crop['pests'][_languageProvider.isKannada ? 'kn' : 'en'],
       };
     }).toList();
   }
 
   // ---------- Navigation ----------
   void _onTabTapped(int index) {
+    if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
-    if (index == 1) {
-      _openDetect();
-    } else if (index == 2) {
-      Navigator.pushNamed(context, '/settings');
-    }
-  }
 
-  void _openDetect() {
-    Navigator.pushNamed(context, '/detect');
+    final route = index == 0 ? '/' : (index == 1 ? '/detect' : '/settings');
+    final current = ModalRoute.of(context)?.settings.name;
+    if (current == route) return;
+
+    Navigator.pushReplacementNamed(context, route);
   }
 
   // ---------- Image Picker ----------
@@ -485,163 +492,180 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ---------- Show Pest Info Dialog ----------
-  void _showPestInfo(Map<String, String> pest) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header with Image
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    child: Image.asset(
-                      pest["img"]!,
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 200,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.bug_report, size: 64, color: Colors.grey),
-                      ),
+  // ---------- Show Pest Info Dialog ----------
+void _showPestInfo(Map<String, String> pest) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with Image
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: Image.asset(
+                    pest["img"]!,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 180,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.bug_report, size: 64, color: Colors.grey),
                     ),
                   ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.white),
-                      ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.white),
                     ),
                   ),
-                ],
-              ),
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.red.shade700,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            pest["name"]!,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                ),
+              ],
+            ),
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.red.shade700,
+                              size: 20,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      pest["desc"]!,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey.shade600,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.green.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          _translate('detailedInfo')['detailedInfo']!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      pest["details"]!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Icon(Icons.medical_services_outlined, color: Colors.blue.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          _translate('treatment')['treatment']!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle_outline, color: Colors.green.shade700, size: 20),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              pest["treatment"]!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade800,
-                                height: 1.4,
+                              pest["name"]!,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Text(
+                        pest["desc"]!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.green.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _translate('detailedInfo')['detailedInfo']!,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        pest["details"]!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Icon(Icons.medical_services_outlined, color: Colors.blue.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _translate('treatment')['treatment']!,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.check_circle_outline, color: Colors.green.shade700, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                pest["treatment"]!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade800,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ---------- Weather Card ----------
   Widget _buildWeatherCard(bool isDark) {
@@ -840,6 +864,7 @@ class _HomePageState extends State<HomePage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0A0E0A) : const Color(0xFFF8FBF8);
 
+
     final filteredPests = _pests.where((pest) {
       final name = pest["name"]!.toLowerCase();
       return name.contains(_searchQuery.toLowerCase());
@@ -956,15 +981,15 @@ class _HomePageState extends State<HomePage> {
                 child: IconButton(
                   onPressed: () {
                     setState(() {
-                      _isKannada = !_isKannada;
+                      _languageProvider.toggleLanguage();
                     });
                   },
                   icon: Icon(
-                    _isKannada ? Icons.language : Icons.translate,
+                    _languageProvider.isKannada ? Icons.language : Icons.translate,
                     color: Colors.white,
                     size: 24,
                   ),
-                  tooltip: _isKannada ? 'Switch to English' : 'ಕನ್ನಡಕ್ಕೆ ಬದಲಿಸಿ',
+                  tooltip: _languageProvider.isKannada ? 'Switch to English' : 'ಕನ್ನಡಕ್ಕೆ ಬದಲಿಸಿ',
                 ),
               ),
             ],
@@ -1174,20 +1199,29 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            _translate('commonPests')['commonPests']!,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            _translate('tapForDetails')['tapForDetails']!,
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+          // Show full title and the small 'tap for details' subtitle below it
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _translate('commonPests')['commonPests']!,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  softWrap: true,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _translate('tapForDetails')['tapForDetails']!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
